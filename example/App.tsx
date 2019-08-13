@@ -23,7 +23,7 @@ export default function App() {
       <DraggableList
         data={data}
         extractKey={item => item.label}
-        renderItem={({ item, startDrag, onDrop }) => (
+        renderItem={({ item, startDrag }) => (
           <View
             style={{
               height: 100,
@@ -51,7 +51,7 @@ export default function App() {
                 marginTop: -25
               }}
             >
-              <TouchableOpacity onPressIn={startDrag} onPressOut={onDrop} activeOpacity={1}>
+              <TouchableOpacity onPressIn={startDrag} activeOpacity={1}>
                 <Text
                   style={{
                     backgroundColor: 'yellow',

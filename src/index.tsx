@@ -1,22 +1,23 @@
 import * as React from 'react';
-import { ScrollView } from 'react-native-gesture-handler';
-import Animated from 'react-native-reanimated';
 import {
-  Dimensions,
-  View,
-  PanResponder,
-  GestureResponderEvent,
-  PanResponderGestureState,
-  PanResponderInstance
-} from 'react-native';
+  PanGestureHandler,
+  ScrollView,
+  State as GHState
+} from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { Dimensions, View } from 'react-native';
 
 import RowItem from './RowItem';
 
 const { height: wHeight } = Dimensions.get('window');
 
+interface OnMoveEnd {
+  data: any[];
+}
+
 interface Props {
   data: any[];
-  onMoveEnd: (data: any[]) => void;
+  onMoveEnd: ({ data }: OnMoveEnd) => void;
   renderItem: ({ item, index, startDrag }) => React.ReactNode;
   extractKey: (item: any) => string;
 }
@@ -50,12 +51,11 @@ const {
   debug,
   clockRunning,
   stopClock,
-  startClock
+  startClock,
+  block
 } = Animated;
 
 class DraggableScrollView extends React.Component<Props, State> {
-  panResponder: PanResponderInstance;
-
   scrolling = new Clock();
 
   itemRefs: React.RefObject<any>[];
@@ -63,6 +63,7 @@ class DraggableScrollView extends React.Component<Props, State> {
   scrollRef: React.RefObject<ScrollView> = React.createRef();
 
   gestureStartPoint = new Value<number>(0);
+  gestureState = new Value<number>(0);
 
   itemTransitions: Animated.Value<number>[];
   activeItemAbsoluteY = new Value<number>(-1);
@@ -79,6 +80,21 @@ class DraggableScrollView extends React.Component<Props, State> {
 
   isScrolling = false;
 
+  onGestureEvent = Animated.event(
+    [
+      {
+        nativeEvent: {
+          translationY: this.translationY,
+          absoluteY: this.absoluteTranslationY,
+          state: this.gestureState
+        }
+      }
+    ],
+    {
+      useNativeDriver: true
+    }
+  );
+
   constructor(props: Props) {
     super(props);
 
@@ -88,41 +104,22 @@ class DraggableScrollView extends React.Component<Props, State> {
     this.state = {
       activeIndex: -1
     };
-
-    this.panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: this._handleStartShouldSetPanResponder,
-      onMoveShouldSetPanResponder: this._handleMoveShouldSetPanResponder,
-      onPanResponderGrant: this._handlePanResponderGrant,
-      onPanResponderMove: this._handlePanResponderMove,
-      onPanResponderRelease: this._handlePanResponderEnd,
-      onPanResponderTerminate: this._handlePanResponderEnd
-    });
   }
 
-  _handleStartShouldSetPanResponder = () => {
-    const { activeIndex } = this.state;
-    return activeIndex !== -1;
-  };
-
-  _handleMoveShouldSetPanResponder = () => {
-    const { activeIndex } = this.state;
-    return activeIndex !== -1;
-  };
-
-  _handlePanResponderGrant = (
-    e: GestureResponderEvent,
-    gestureState: PanResponderGestureState
-  ) => {
-    this.gestureStartPoint.setValue(gestureState.y0);
-  };
-
-  _handlePanResponderMove = (
-    e: GestureResponderEvent,
-    gestureState: PanResponderGestureState
-  ) => {
-    this.absoluteTranslationY.setValue(gestureState.moveY);
-    this.translationY.setValue(gestureState.dy);
-  };
+  // _handlePanResponderGrant = (
+  //   e: GestureResponderEvent,
+  //   gestureState: PanResponderGestureState
+  // ) => {
+  //   this.gestureStartPoint.setValue(gestureState.y0);
+  // };
+  //
+  // _handlePanResponderMove = (
+  //   e: GestureResponderEvent,
+  //   gestureState: PanResponderGestureState
+  // ) => {
+  //   this.absoluteTranslationY.setValue(gestureState.moveY);
+  //   this.translationY.setValue(gestureState.dy);
+  // };
 
   _handlePanResponderEnd = () => {
     this.setState({
@@ -149,15 +146,18 @@ class DraggableScrollView extends React.Component<Props, State> {
 
   onRowBecomeActive = (index: number) => {
     this.containerRef.current &&
-      this.containerRef.current.measureInWindow((x, y, width, height) => {
-        this.viewOffsetTop.setValue(y);
-        this.viewOffsetBottom.setValue(wHeight - y - height);
-      });
+      this.containerRef.current
+        // @ts-ignore
+        .getNode()
+        .measureInWindow((x, y, width, height) => {
+          this.viewOffsetTop.setValue(y);
+          this.viewOffsetBottom.setValue(wHeight - y - height);
+        });
 
     this.itemRefs[index] &&
       this.itemRefs[index].current &&
-      // @ts-ignore
       this.itemRefs[index].current
+        // @ts-ignore
         .getNode()
         .measureInWindow((x, y, width, height) => {
           if (height !== undefined) {
@@ -191,7 +191,7 @@ class DraggableScrollView extends React.Component<Props, State> {
   };
 
   scrollUp = (values: number[]) => {
-    const [ offset ] = values;
+    const [offset] = values;
 
     if (offset > 0) {
       this.scroll(ScrollDirection.UP, values);
@@ -227,20 +227,28 @@ class DraggableScrollView extends React.Component<Props, State> {
     }
 
     this.scrollRef.current &&
-    // @ts-ignore
-    this.scrollRef.current.scrollTo({
-      animated: true,
-      y: offset
-    });
+      // @ts-ignore
+      this.scrollRef.current.scrollTo({
+        animated: true,
+        y: offset
+      });
 
     setTimeout(() => {
       this.isScrolling = false;
       this.animatedIsScrolling.setValue(0);
-    }, 1000);
+    }, 500);
   };
 
   onScrollEvent = event => {
     this.scrollOffset.setValue(event.nativeEvent.contentOffset.y);
+  };
+
+  onDrop = () => {
+    this.setState({
+      activeIndex: -1
+    });
+    this.translationY.setValue(0);
+    this.gestureState.setValue(0);
   };
 
   render() {
@@ -248,85 +256,102 @@ class DraggableScrollView extends React.Component<Props, State> {
     const { activeIndex } = this.state;
 
     return (
-      <View
-        ref={this.containerRef}
-        style={{ flex: 1, opacity: 1 }}
-        {...this.panResponder.panHandlers}
+      <PanGestureHandler
+        onGestureEvent={this.onGestureEvent}
+        onHandlerStateChange={this.onGestureEvent}
+        waitFor={this.scrollRef}
       >
-        <ScrollView
-          ref={this.scrollRef}
-          scrollEnabled={activeIndex === -1}
-          scrollEventThrottle={1}
-          onScroll={this.onScrollEvent}
-        >
-          <Animated.Code>
-            {() =>
-              cond(eq(this.animatedIsScrolling, 0), [
-                debug('scrolledOffset', this.scrolledOffset),
-                cond(
-                  and(
-                    neq(this.activeIndex, -1),
-                    neq(this.activeItemAbsoluteY, -1)
-                  ),
-                  [
-                    set(
-                      this.activeHoverIndex,
-                      sub(
-                        round(
-                          divide(
-                            sub(
-                              add(
-                                this.activeItemAbsoluteY,
-                                this.scrollOffset,
-                                this.translationY
-                              ),
-                              this.viewOffsetTop
+        <Animated.View ref={this.containerRef} style={{ flex: 1, opacity: 1 }}>
+          <ScrollView
+            ref={this.scrollRef}
+            scrollEnabled={activeIndex === -1}
+            scrollEventThrottle={1}
+            onScroll={this.onScrollEvent}
+          >
+            <Animated.Code>
+              {() =>
+                block([
+                  debug('absoluteTranslationY', this.absoluteTranslationY),
+                  cond(eq(this.gestureState, GHState.END), [
+                    set(this.activeIndex, -1),
+                    set(this.activeHoverIndex, -1),
+                    set(this.activeItemHeight, 0),
+                    set(this.gestureStartPoint, 0),
+                    set(this.activeItemAbsoluteY, -1),
+                    set(this.translationY, 0),
+                    set(this.absoluteTranslationY, 0),
+                    set(this.scrolledOffset, 0),
+                    call([], this.onDrop)
+                  ]),
+                  cond(eq(this.animatedIsScrolling, 0), [
+                    cond(
+                      and(
+                        neq(this.activeIndex, -1),
+                        neq(this.activeItemAbsoluteY, -1)
+                      ),
+                      [
+                        set(
+                          this.activeHoverIndex,
+                          sub(
+                            round(
+                              divide(
+                                sub(
+                                  add(
+                                    this.activeItemAbsoluteY,
+                                    this.scrollOffset,
+                                    this.translationY
+                                  ),
+                                  this.viewOffsetTop
+                                ),
+                                this.activeItemHeight
+                              )
                             ),
-                            this.activeItemHeight
+                            1
                           )
-                        ),
-                        1
+                        )
+                      ]
+                    ),
+                    cond(
+                      and(
+                        neq(this.activeIndex, -1),
+                        lessOrEq(
+                          this.absoluteTranslationY,
+                          add(
+                            this.viewOffsetTop,
+                            multiply(this.activeItemHeight, 0.5)
+                          )
+                        )
+                      ),
+                      call(
+                        [this.scrollOffset, this.activeItemHeight],
+                        this.scrollUp
+                      )
+                    ),
+                    cond(
+                      and(
+                        neq(this.activeIndex, -1),
+                        greaterOrEq(
+                          this.absoluteTranslationY,
+                          sub(
+                            wHeight,
+                            this.viewOffsetTop,
+                            multiply(this.activeItemHeight, 0.3)
+                          )
+                        )
+                      ),
+                      call(
+                        [this.scrollOffset, this.activeItemHeight],
+                        this.scrollDown
                       )
                     )
-                  ]
-                ),
-                cond(
-                  and(
-                    greaterThan(this.scrollOffset, this.activeItemHeight),
-                    // greaterThan(this.absoluteTranslationY, this.viewOffsetTop),
-                    lessOrEq(
-                      this.absoluteTranslationY,
-                      add(
-                        this.viewOffsetTop,
-                        multiply(this.activeItemHeight, 0.5)
-                      )
-                    )
-                  ),
-                  call(
-                    [this.scrollOffset, this.activeItemHeight],
-                    this.scrollUp
-                  )
-                ),
-                cond(
-                  greaterOrEq(
-                    this.absoluteTranslationY,
-                    sub(
-                      wHeight,
-                      this.viewOffsetTop,
-                      multiply(this.activeItemHeight, 0.3)
-                    )
-                  ),
-                  call(
-                    [this.scrollOffset, this.activeItemHeight],
-                    this.scrollDown
-                  )
-                )
-              ])
-            }
-          </Animated.Code>
-          {data.map((item, index) => this.renderItem({ item, index }))}
-        </ScrollView>
-      </View>
+                  ])
+                ])
+              }
+            </Animated.Code>
+            {data.map((item, index) => this.renderItem({ item, index }))}
+          </ScrollView>
+        </Animated.View>
+      </PanGestureHandler>
     );
   }
 }
