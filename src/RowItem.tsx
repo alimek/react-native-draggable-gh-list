@@ -101,6 +101,7 @@ class RowItem extends React.Component<Props> {
         </Animated.Code>
         <Animated.View
           ref={itemRef}
+          // @ts-ignore
           style={{
             transform: [
               {

@@ -33,7 +33,6 @@ enum ScrollDirection {
 
 const {
   cond,
-  Clock,
   eq,
   set,
   round,
@@ -45,19 +44,12 @@ const {
   and,
   call,
   neq,
-  greaterThan,
   sub,
   greaterOrEq,
-  debug,
-  clockRunning,
-  stopClock,
-  startClock,
   block
 } = Animated;
 
 class DraggableScrollView extends React.Component<Props, State> {
-  scrolling = new Clock();
-
   itemRefs: React.RefObject<any>[];
   containerRef: React.RefObject<View> = React.createRef();
   scrollRef: React.RefObject<ScrollView> = React.createRef();
@@ -106,22 +98,7 @@ class DraggableScrollView extends React.Component<Props, State> {
     };
   }
 
-  // _handlePanResponderGrant = (
-  //   e: GestureResponderEvent,
-  //   gestureState: PanResponderGestureState
-  // ) => {
-  //   this.gestureStartPoint.setValue(gestureState.y0);
-  // };
-  //
-  // _handlePanResponderMove = (
-  //   e: GestureResponderEvent,
-  //   gestureState: PanResponderGestureState
-  // ) => {
-  //   this.absoluteTranslationY.setValue(gestureState.moveY);
-  //   this.translationY.setValue(gestureState.dy);
-  // };
-
-  _handlePanResponderEnd = () => {
+  handlePanResponderEnd = () => {
     this.setState({
       activeIndex: -1
     });
@@ -133,6 +110,7 @@ class DraggableScrollView extends React.Component<Props, State> {
     this.translationY.setValue(0);
     this.absoluteTranslationY.setValue(0);
     this.scrolledOffset.setValue(0);
+    this.gestureState.setValue(0);
   };
 
   startDrag = (item: any, index: number) => {
@@ -243,14 +221,6 @@ class DraggableScrollView extends React.Component<Props, State> {
     this.scrollOffset.setValue(event.nativeEvent.contentOffset.y);
   };
 
-  onDrop = () => {
-    this.setState({
-      activeIndex: -1
-    });
-    this.translationY.setValue(0);
-    this.gestureState.setValue(0);
-  };
-
   render() {
     const { data } = this.props;
     const { activeIndex } = this.state;
@@ -271,17 +241,8 @@ class DraggableScrollView extends React.Component<Props, State> {
             <Animated.Code>
               {() =>
                 block([
-                  debug('absoluteTranslationY', this.absoluteTranslationY),
                   cond(eq(this.gestureState, GHState.END), [
-                    set(this.activeIndex, -1),
-                    set(this.activeHoverIndex, -1),
-                    set(this.activeItemHeight, 0),
-                    set(this.gestureStartPoint, 0),
-                    set(this.activeItemAbsoluteY, -1),
-                    set(this.translationY, 0),
-                    set(this.absoluteTranslationY, 0),
-                    set(this.scrolledOffset, 0),
-                    call([], this.onDrop)
+                    call([], this.handlePanResponderEnd)
                   ]),
                   cond(eq(this.animatedIsScrolling, 0), [
                     cond(
@@ -314,6 +275,7 @@ class DraggableScrollView extends React.Component<Props, State> {
                     cond(
                       and(
                         neq(this.activeIndex, -1),
+                        eq(this.gestureState, GHState.ACTIVE),
                         lessOrEq(
                           this.absoluteTranslationY,
                           add(
@@ -330,6 +292,7 @@ class DraggableScrollView extends React.Component<Props, State> {
                     cond(
                       and(
                         neq(this.activeIndex, -1),
+                        eq(this.gestureState, GHState.ACTIVE),
                         greaterOrEq(
                           this.absoluteTranslationY,
                           sub(
