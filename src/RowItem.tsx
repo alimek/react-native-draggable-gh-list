@@ -50,55 +50,55 @@ class RowItem extends React.Component<Props> {
 
     return (
       <>
-        <Animated.Code>
-          {() =>
-            block([
-              cond(
-                and(
-                  neq(animatedActiveIndex, -1),
-                  eq(animatedActiveIndex, index)
-                ),
-                [
-                  set(this.isActive, 1),
-                  stopClock(this.clock),
-                  set(this.isAnimating, 0)
-                ],
-                set(this.isActive, 0)
-              ),
-              cond(
-                eq(this.isActive, 1),
-                [
-                  set(this.zIndex, 2),
-                  set(this.position, add(scrollOffset, translationY))
-                ],
-                [
-                  set(this.isAnimating, 1),
-                  set(
-                    this.position,
-                    runSpring(this.clock, this.position, 0, {
-                      toValue: new Value(0),
-                      damping: 30,
-                      mass: 1,
-                      stiffness: 500.6,
-                      overshootClamping: false,
-                      restSpeedThreshold: 0.001,
-                      restDisplacementThreshold: 0.001
-                    })
-                  )
-                ]
-              ),
-              cond(
-                and(eq(this.isAnimating, 1), eq(clockRunning(this.clock), 0)),
-                [
-                  set(this.zIndex, 1),
-                  set(this.isAnimating, 0),
-                  set(this.position, 0),
-                  set(this.isActive, 0)
-                ]
-              )
-            ])
-          }
-        </Animated.Code>
+        {/*<Animated.Code>*/}
+        {/*  {() =>*/}
+        {/*    block([*/}
+        {/*      cond(*/}
+        {/*        and(*/}
+        {/*          neq(animatedActiveIndex, -1),*/}
+        {/*          eq(animatedActiveIndex, index)*/}
+        {/*        ),*/}
+        {/*        [*/}
+        {/*          set(this.isActive, 1),*/}
+        {/*          stopClock(this.clock),*/}
+        {/*          set(this.isAnimating, 0)*/}
+        {/*        ],*/}
+        {/*        set(this.isActive, 0)*/}
+        {/*      ),*/}
+        {/*      cond(*/}
+        {/*        eq(this.isActive, 1),*/}
+        {/*        [*/}
+        {/*          set(this.zIndex, 2),*/}
+        {/*          set(this.position, add(scrollOffset, translationY))*/}
+        {/*        ],*/}
+        {/*        [*/}
+        {/*          set(this.isAnimating, 1),*/}
+        {/*          set(*/}
+        {/*            this.position,*/}
+        {/*            runSpring(this.clock, this.position, 0, {*/}
+        {/*              toValue: new Value(0),*/}
+        {/*              damping: 30,*/}
+        {/*              mass: 1,*/}
+        {/*              stiffness: 500.6,*/}
+        {/*              overshootClamping: false,*/}
+        {/*              restSpeedThreshold: 0.001,*/}
+        {/*              restDisplacementThreshold: 0.001*/}
+        {/*            })*/}
+        {/*          )*/}
+        {/*        ]*/}
+        {/*      ),*/}
+        {/*      cond(*/}
+        {/*        and(eq(this.isAnimating, 1), eq(clockRunning(this.clock), 0)),*/}
+        {/*        [*/}
+        {/*          set(this.zIndex, 1),*/}
+        {/*          set(this.isAnimating, 0),*/}
+        {/*          set(this.position, 0),*/}
+        {/*          set(this.isActive, 0)*/}
+        {/*        ]*/}
+        {/*      )*/}
+        {/*    ])*/}
+        {/*  }*/}
+        {/*</Animated.Code>*/}
         <Animated.View
           ref={itemRef}
           // @ts-ignore
