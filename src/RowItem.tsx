@@ -103,6 +103,7 @@ class RowItem extends React.Component<Props> {
           ref={itemRef}
           // @ts-ignore
           style={{
+            opacity: 1,
             transform: [
               {
                 translateY: this.position

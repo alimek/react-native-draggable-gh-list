@@ -11,7 +11,6 @@ interface Props {
   translationY: Animated.Value<number>;
   activeItemHeight: Animated.Value<number>;
   absoluteY: Animated.Value<number>;
-  scrollOffset: Animated.Value<number>;
   viewOffsetTop: Animated.Value<number>;
   gestureState: Animated.Value<number>;
   isAnimating: Animated.Value<number>;
@@ -30,18 +29,12 @@ const {
   and,
   add,
   sub,
-  debug,
 } = Animated;
 
-class SelectedItem extends React.Component<Props> {
+class SelectedItem extends React.PureComponent<Props> {
   clock = new Clock();
   position = new Value<number>(0);
   top = new Value<number>(-wHeight);
-
-  constructor(props: Props) {
-    super(props);
-    console.log('constructor');
-  }
 
   render() {
     const {
@@ -50,7 +43,6 @@ class SelectedItem extends React.Component<Props> {
       absoluteY,
       viewOffsetTop,
       gestureState,
-      activeItemHeight,
       isAnimating,
       targetItemPositionY
     } = this.props;
@@ -60,7 +52,6 @@ class SelectedItem extends React.Component<Props> {
         <Animated.Code>
           {() =>
             block([
-              debug('position', this.position),
               cond(
                 eq(isAnimating, -1),
                 set(
@@ -77,7 +68,7 @@ class SelectedItem extends React.Component<Props> {
                 set(
                   this.top,
                   runTiming(this.clock, add(this.top, translationY), {
-                    toValue: sub(targetItemPositionY, activeItemHeight),
+                    toValue: sub(targetItemPositionY, viewOffsetTop),
                     duration: 100,
                     easing: Easing.linear
                   })
