@@ -13,6 +13,10 @@ export default function App() {
     }))
   );
 
+  const onMoveEnd = ({ from, to }) => {
+    alert(`From ${from} to ${to}`);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View
@@ -66,7 +70,7 @@ export default function App() {
             </View>
           </View>
         )}
-        onMoveEnd={({ data }) => setData(data)}
+        onMoveEnd={onMoveEnd}
       />
       <View
         style={{

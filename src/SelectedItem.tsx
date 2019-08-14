@@ -15,6 +15,8 @@ interface Props {
   gestureState: Animated.Value<number>;
   isAnimating: Animated.Value<number>;
   targetItemPositionY: Animated.Value<number>;
+  activeIndex: Animated.Value<number>;
+  activeHoverIndex: Animated.Value<number>;
 }
 
 const {
@@ -29,6 +31,8 @@ const {
   and,
   add,
   sub,
+  greaterThan,
+  lessOrEq
 } = Animated;
 
 class SelectedItem extends React.PureComponent<Props> {
@@ -44,7 +48,10 @@ class SelectedItem extends React.PureComponent<Props> {
       viewOffsetTop,
       gestureState,
       isAnimating,
-      targetItemPositionY
+      targetItemPositionY,
+      activeItemHeight,
+      activeIndex,
+      activeHoverIndex
     } = this.props;
 
     return (
@@ -68,7 +75,17 @@ class SelectedItem extends React.PureComponent<Props> {
                 set(
                   this.top,
                   runTiming(this.clock, add(this.top, translationY), {
-                    toValue: sub(targetItemPositionY, viewOffsetTop),
+                    toValue: sub(
+                      cond(
+                        greaterThan(activeHoverIndex, activeIndex),
+                        add(targetItemPositionY, activeItemHeight),
+                        cond(
+                          lessOrEq(activeHoverIndex, activeIndex),
+                          sub(targetItemPositionY, activeItemHeight)
+                        )
+                      ),
+                      viewOffsetTop
+                    ),
                     duration: 100,
                     easing: Easing.linear
                   })
@@ -90,7 +107,7 @@ class SelectedItem extends React.PureComponent<Props> {
             position: 'absolute',
             top: this.top,
             left: 0,
-            right: 0,
+            right: 0
           }}
         >
           {component}

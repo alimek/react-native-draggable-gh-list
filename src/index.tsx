@@ -2,7 +2,6 @@ import * as React from 'react';
 import {
   FlatList,
   PanGestureHandler,
-  ScrollView,
   State as GHState
 } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -14,12 +13,15 @@ import SelectedItem from './SelectedItem';
 const { height: wHeight } = Dimensions.get('window');
 
 interface OnMoveEnd {
-  data: any[];
+  before: any[];
+  from: number;
+  to: number;
+  after: any[];
 }
 
 interface Props {
   data: any[];
-  onMoveEnd: ({ data }: OnMoveEnd) => void;
+  onMoveEnd: (data: OnMoveEnd) => void;
   renderItem: ({ item, index, startDrag }) => React.ReactNode;
   extractKey: (item: any) => string;
 }
@@ -49,7 +51,6 @@ const {
   sub,
   greaterOrEq,
   block,
-  debug,
   onChange
 } = Animated;
 
@@ -109,11 +110,8 @@ class DraggableScrollView extends React.Component<Props, State> {
   }
 
   handlePanResponderEnd = (values: number[]) => {
+    const { onMoveEnd, data } = this.props;
     const [initialIndex, finalIndex] = values;
-    console.log('clean', {
-      initialIndex,
-      finalIndex
-    });
     this.setState({
       activeIndex: -1
     });
@@ -126,6 +124,15 @@ class DraggableScrollView extends React.Component<Props, State> {
     this.absoluteTranslationY.setValue(0);
     this.scrolledOffset.setValue(0);
     this.gestureState.setValue(0);
+
+    if (onMoveEnd) {
+      onMoveEnd({
+        before: data,
+        from: initialIndex,
+        to: finalIndex,
+        after: []
+      });
+    }
   };
 
   startDrag = (item: any, index: number) => {
@@ -178,8 +185,8 @@ class DraggableScrollView extends React.Component<Props, State> {
         animatedActiveIndex={this.activeIndex}
         index={index}
         itemRef={this.itemRefs[index]}
-        translationY={this.translationY}
-        scrollOffset={this.scrolledOffset}
+        activeHoverIndex={this.activeHoverIndex}
+        activeItemHeight={this.activeItemHeight}
       />
     );
   };
@@ -237,7 +244,7 @@ class DraggableScrollView extends React.Component<Props, State> {
 
   renderSelectedComponent = () => {
     const { activeIndex: index } = this.state;
-    const { renderItem, extractKey, data } = this.props;
+    const { renderItem, data } = this.props;
 
     if (index === -1) {
       return null;
@@ -254,30 +261,29 @@ class DraggableScrollView extends React.Component<Props, State> {
       <SelectedItem
         component={component}
         translationY={this.translationY}
-        scrollOffset={this.scrollOffset}
         absoluteY={this.activeItemAbsoluteY}
         activeItemHeight={this.activeItemHeight}
         viewOffsetTop={this.viewOffsetTop}
         gestureState={this.gestureState}
         isAnimating={this.isAnimating}
         targetItemPositionY={this.targetItemPositionY}
+        activeIndex={this.activeIndex}
+        activeHoverIndex={this.activeHoverIndex}
       />
     );
   };
 
-  onChangedHoverIndex = (index) => {
-    console.log('onChangedIndex', index[0]);
+  onChangedHoverIndex = index => {
     this.itemRefs[index] &&
-    this.itemRefs[index].current &&
-    this.itemRefs[index].current
-    // @ts-ignore
-      .getNode()
-      .measureInWindow((x, y, width, height) => {
-        if (y !== undefined) {
-          console.log('position', x, y, width, height);
-          this.targetItemPositionY.setValue(y);
-        }
-      });
+      this.itemRefs[index].current &&
+      this.itemRefs[index].current
+        // @ts-ignore
+        .getNode()
+        .measureInWindow((x, y) => {
+          if (y !== undefined) {
+            this.targetItemPositionY.setValue(y);
+          }
+        });
   };
 
   render() {
@@ -300,7 +306,10 @@ class DraggableScrollView extends React.Component<Props, State> {
                 cond(eq(this.gestureState, GHState.END), [
                   set(this.finalIndex, this.activeHoverIndex)
                 ]),
-                onChange(this.activeHoverIndex, call([this.activeHoverIndex], this.onChangedHoverIndex)),
+                onChange(
+                  this.activeHoverIndex,
+                  call([this.activeHoverIndex], this.onChangedHoverIndex)
+                ),
                 cond(eq(this.isAnimating, 0), [
                   call(
                     [this.initialIndex, this.finalIndex],

@@ -1,15 +1,14 @@
 import * as React from 'react';
 import Animated from 'react-native-reanimated';
-import { runSpring } from 'react-native-redash';
 
 interface Props {
   component: React.ReactNode;
   activeIndex: number;
   index: number;
   itemRef: React.RefObject<any>;
-  translationY: Animated.Value<number>;
   animatedActiveIndex: Animated.Value<number>;
-  scrollOffset: Animated.Value<number>;
+  activeHoverIndex: Animated.Value<number>;
+  activeItemHeight: Animated.Value<number>;
 }
 
 const {
@@ -17,106 +16,87 @@ const {
   Value,
   cond,
   eq,
-  neq,
-  Clock,
   set,
-  clockRunning,
-  and,
-  stopClock,
-  add,
+  lessThan,
+  greaterThan
 } = Animated;
 
 class RowItem extends React.Component<Props> {
-  clock = new Clock();
-  zIndex = new Value<number>(1);
-  position = new Value<number>(0);
-  isActive = new Value<number>(0);
-  isAnimating = new Value<number>(0);
-  scale = new Value<number>(1);
-
-  constructor(props: Props) {
-    super(props);
-  }
+  isActive = new Value(0);
+  spacerTopHeight = new Value<number>(0);
+  spacerBottomHeight = new Value<number>(0);
 
   render() {
     const {
       component,
-      translationY,
       itemRef,
       animatedActiveIndex,
       index,
-      scrollOffset
+      activeIndex,
+      activeHoverIndex,
+      activeItemHeight
     } = this.props;
 
     return (
       <>
-        {/*<Animated.Code>*/}
-        {/*  {() =>*/}
-        {/*    block([*/}
-        {/*      cond(*/}
-        {/*        and(*/}
-        {/*          neq(animatedActiveIndex, -1),*/}
-        {/*          eq(animatedActiveIndex, index)*/}
-        {/*        ),*/}
-        {/*        [*/}
-        {/*          set(this.isActive, 1),*/}
-        {/*          stopClock(this.clock),*/}
-        {/*          set(this.isAnimating, 0)*/}
-        {/*        ],*/}
-        {/*        set(this.isActive, 0)*/}
-        {/*      ),*/}
-        {/*      cond(*/}
-        {/*        eq(this.isActive, 1),*/}
-        {/*        [*/}
-        {/*          set(this.zIndex, 2),*/}
-        {/*          set(this.position, add(scrollOffset, translationY))*/}
-        {/*        ],*/}
-        {/*        [*/}
-        {/*          set(this.isAnimating, 1),*/}
-        {/*          set(*/}
-        {/*            this.position,*/}
-        {/*            runSpring(this.clock, this.position, 0, {*/}
-        {/*              toValue: new Value(0),*/}
-        {/*              damping: 30,*/}
-        {/*              mass: 1,*/}
-        {/*              stiffness: 500.6,*/}
-        {/*              overshootClamping: false,*/}
-        {/*              restSpeedThreshold: 0.001,*/}
-        {/*              restDisplacementThreshold: 0.001*/}
-        {/*            })*/}
-        {/*          )*/}
-        {/*        ]*/}
-        {/*      ),*/}
-        {/*      cond(*/}
-        {/*        and(eq(this.isAnimating, 1), eq(clockRunning(this.clock), 0)),*/}
-        {/*        [*/}
-        {/*          set(this.zIndex, 1),*/}
-        {/*          set(this.isAnimating, 0),*/}
-        {/*          set(this.position, 0),*/}
-        {/*          set(this.isActive, 0)*/}
-        {/*        ]*/}
-        {/*      )*/}
-        {/*    ])*/}
-        {/*  }*/}
-        {/*</Animated.Code>*/}
+        <Animated.Code>
+          {() =>
+            block([
+              cond(
+                eq(activeHoverIndex, index),
+                set(this.isActive, 1),
+                set(this.isActive, 0)
+              ),
+              cond(
+                eq(this.isActive, 1),
+                [
+                  // do something when hover is on element
+                  cond(
+                    eq(animatedActiveIndex, index),
+                    [
+                      // is element is equal selected element
+                      set(this.spacerTopHeight, activeItemHeight),
+                      set(this.spacerBottomHeight, 0)
+                    ],
+                    [
+                      cond(lessThan(animatedActiveIndex, index), [
+                        set(this.spacerTopHeight, 0),
+                        set(this.spacerBottomHeight, activeItemHeight)
+                      ]),
+                      cond(greaterThan(animatedActiveIndex, index), [
+                        set(this.spacerBottomHeight, 0),
+                        set(this.spacerTopHeight, activeItemHeight)
+                      ])
+                    ]
+                  )
+                ],
+                [set(this.spacerBottomHeight, 0), set(this.spacerTopHeight, 0)]
+              )
+            ])
+          }
+        </Animated.Code>
+        <Animated.View
+          style={{
+            height: this.spacerTopHeight,
+            backgroundColor: 'red'
+          }}
+        />
         <Animated.View
           ref={itemRef}
           // @ts-ignore
           style={{
             opacity: 1,
-            transform: [
-              {
-                translateY: this.position
-              },
-              {
-                scale: this.scale
-              }
-            ],
-            zIndex: this.zIndex
+            height: activeIndex === index ? 0 : null
           }}
         >
           {component}
         </Animated.View>
+        <Animated.View
+          style={{
+            height: this.spacerBottomHeight,
+            backgroundColor: 'grey'
+          }}
+        />
       </>
     );
   }
