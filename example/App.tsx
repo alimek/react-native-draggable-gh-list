@@ -5,7 +5,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 export default function App() {
   const [data, setData] = useState(
-    [...Array(25)].map((d, index) => ({
+    [...Array(5)].map((d, index) => ({
       key: `item-${index}`,
       label: index,
       backgroundColor: `rgb(${Math.floor(Math.random() * 255)}, ${index *
@@ -13,8 +13,14 @@ export default function App() {
     }))
   );
 
-  const onMoveEnd = ({ from, to }) => {
-    alert(`From ${from} to ${to}`);
+  const onMoveEnd = ({ from, to, before, after }) => {
+    // alert(`From ${from} to ${to}`);
+    console.log({
+      before,
+      after,
+    });
+
+    setData(after);
   };
 
   return (

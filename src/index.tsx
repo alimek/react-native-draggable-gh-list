@@ -5,7 +5,13 @@ import {
   State as GHState
 } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
-import { Dimensions, View } from 'react-native';
+import {
+  Dimensions,
+  FlatListProps,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  View
+} from 'react-native';
 
 import RowItem from './RowItem';
 import SelectedItem from './SelectedItem';
@@ -22,7 +28,15 @@ interface OnMoveEnd {
 interface Props {
   data: any[];
   onMoveEnd: (data: OnMoveEnd) => void;
-  renderItem: ({ item, index, startDrag }) => React.ReactNode;
+  renderItem: ({
+    item,
+    index,
+    startDrag
+  }: {
+    item: any;
+    index: number;
+    startDrag: () => void;
+  }) => React.ReactNode;
   extractKey: (item: any) => string;
 }
 
@@ -54,7 +68,9 @@ const {
   onChange
 } = Animated;
 
-class DraggableScrollView extends React.Component<Props, State> {
+type AllProps = Props & FlatListProps<any>;
+
+class DraggableFlatList extends React.Component<AllProps, State> {
   itemRefs: React.RefObject<any>[];
   containerRef: React.RefObject<View> = React.createRef();
   scrollRef: React.RefObject<FlatList<any>> = React.createRef();
@@ -98,7 +114,7 @@ class DraggableScrollView extends React.Component<Props, State> {
     }
   );
 
-  constructor(props: Props) {
+  constructor(props: AllProps) {
     super(props);
 
     this.itemRefs = props.data.map(() => React.createRef());
@@ -109,7 +125,7 @@ class DraggableScrollView extends React.Component<Props, State> {
     };
   }
 
-  handlePanResponderEnd = (values: number[]) => {
+  handlePanResponderEnd = (values: any) => {
     const { onMoveEnd, data } = this.props;
     const [initialIndex, finalIndex] = values;
     this.setState({
@@ -125,14 +141,21 @@ class DraggableScrollView extends React.Component<Props, State> {
     this.scrolledOffset.setValue(0);
     this.gestureState.setValue(0);
 
+    const after = [...data];
+    const element = after[initialIndex];
+    after.splice(initialIndex, 1);
+    after.splice(finalIndex, 0, element);
+
     if (onMoveEnd) {
       onMoveEnd({
         before: data,
         from: initialIndex,
         to: finalIndex,
-        after: []
+        after
       });
     }
+
+    this.itemTransitions.forEach(transition => transition.setValue(0));
   };
 
   startDrag = (item: any, index: number) => {
@@ -150,26 +173,32 @@ class DraggableScrollView extends React.Component<Props, State> {
       this.containerRef.current
         // @ts-ignore
         .getNode()
-        .measureInWindow((x, y, width, height) => {
-          this.viewOffsetTop.setValue(y);
-          this.viewOffsetBottom.setValue(wHeight - y - height);
-        });
+        .measureInWindow(
+          (x?: number, y?: number, width?: number, height?: number) => {
+            if (y !== undefined && height !== undefined) {
+              this.viewOffsetTop.setValue(y);
+              this.viewOffsetBottom.setValue(wHeight - y - height);
+            }
+          }
+        );
 
     this.itemRefs[index] &&
       this.itemRefs[index].current &&
       this.itemRefs[index].current
         // @ts-ignore
         .getNode()
-        .measureInWindow((x, y, width, height) => {
-          if (height !== undefined) {
-            this.activeItemAbsoluteY.setValue(y);
-            this.activeItemHeight.setValue(height);
+        .measureInWindow(
+          (x?: number, y?: number, width?: number, height?: number) => {
+            if (y !== undefined && height !== undefined) {
+              this.activeItemAbsoluteY.setValue(y);
+              this.activeItemHeight.setValue(height);
+            }
           }
-        });
+        );
   };
 
-  renderItem = ({ item, index }) => {
-    const { renderItem, extractKey } = this.props;
+  renderItem = ({ item, index }: any) => {
+    const { renderItem } = this.props;
     const { activeIndex } = this.state;
     const component = renderItem({
       item,
@@ -180,7 +209,6 @@ class DraggableScrollView extends React.Component<Props, State> {
     return (
       <RowItem
         component={component}
-        key={extractKey(item)}
         activeIndex={activeIndex}
         animatedActiveIndex={this.activeIndex}
         index={index}
@@ -191,14 +219,14 @@ class DraggableScrollView extends React.Component<Props, State> {
     );
   };
 
-  scrollUp = (values: number[]) => {
+  scrollUp = (values: any) => {
     const [offset] = values;
 
     if (offset > 0) {
       this.scroll(ScrollDirection.UP, values);
     }
   };
-  scrollDown = (values: number[]) => this.scroll(ScrollDirection.DOWN, values);
+  scrollDown = (values: any) => this.scroll(ScrollDirection.DOWN, values);
 
   scroll = (direction: ScrollDirection, values: number[]) => {
     const [currentOffset, itemHeight] = values;
@@ -238,7 +266,7 @@ class DraggableScrollView extends React.Component<Props, State> {
     }, 300);
   };
 
-  onScrollEvent = event => {
+  onScrollEvent = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     this.scrollOffset.setValue(event.nativeEvent.contentOffset.y);
   };
 
@@ -273,13 +301,13 @@ class DraggableScrollView extends React.Component<Props, State> {
     );
   };
 
-  onChangedHoverIndex = index => {
+  onChangedHoverIndex = (index: any) => {
     this.itemRefs[index] &&
       this.itemRefs[index].current &&
       this.itemRefs[index].current
         // @ts-ignore
         .getNode()
-        .measureInWindow((x, y) => {
+        .measureInWindow((x?: number, y?: number) => {
           if (y !== undefined) {
             this.targetItemPositionY.setValue(y);
           }
@@ -287,7 +315,7 @@ class DraggableScrollView extends React.Component<Props, State> {
   };
 
   render() {
-    const { data } = this.props;
+    const { data, extractKey, ...others } = this.props;
     const { activeIndex } = this.state;
 
     return (
@@ -382,12 +410,14 @@ class DraggableScrollView extends React.Component<Props, State> {
             }
           </Animated.Code>
           <FlatList
+            {...others}
             data={data}
             renderItem={({ item, index }) => this.renderItem({ item, index })}
             ref={this.scrollRef}
             scrollEnabled={activeIndex === -1}
             scrollEventThrottle={1}
             onScroll={this.onScrollEvent}
+            keyExtractor={(item, index) => `${extractKey(item)}-index-${index}`}
           />
           {this.renderSelectedComponent()}
         </Animated.View>
@@ -396,4 +426,4 @@ class DraggableScrollView extends React.Component<Props, State> {
   }
 }
 
-export default DraggableScrollView;
+export default DraggableFlatList;

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import Animated from 'react-native-reanimated';
+import { LayoutChangeEvent, View } from 'react-native';
 
 interface Props {
   component: React.ReactNode;
@@ -9,6 +10,7 @@ interface Props {
   animatedActiveIndex: Animated.Value<number>;
   activeHoverIndex: Animated.Value<number>;
   activeItemHeight: Animated.Value<number>;
+  placeholder?: React.ReactNode;
 }
 
 const {
@@ -18,7 +20,7 @@ const {
   eq,
   set,
   lessThan,
-  greaterThan
+  greaterThan,
 } = Animated;
 
 class RowItem extends React.Component<Props> {
@@ -34,7 +36,8 @@ class RowItem extends React.Component<Props> {
       index,
       activeIndex,
       activeHoverIndex,
-      activeItemHeight
+      activeItemHeight,
+      placeholder,
     } = this.props;
 
     return (
@@ -50,7 +53,6 @@ class RowItem extends React.Component<Props> {
               cond(
                 eq(this.isActive, 1),
                 [
-                  // do something when hover is on element
                   cond(
                     eq(animatedActiveIndex, index),
                     [
@@ -61,42 +63,47 @@ class RowItem extends React.Component<Props> {
                     [
                       cond(lessThan(animatedActiveIndex, index), [
                         set(this.spacerTopHeight, 0),
-                        set(this.spacerBottomHeight, activeItemHeight)
+                        set(this.spacerBottomHeight, activeItemHeight),
                       ]),
                       cond(greaterThan(animatedActiveIndex, index), [
                         set(this.spacerBottomHeight, 0),
-                        set(this.spacerTopHeight, activeItemHeight)
+                        set(this.spacerTopHeight, activeItemHeight),
                       ])
                     ]
                   )
                 ],
-                [set(this.spacerBottomHeight, 0), set(this.spacerTopHeight, 0)]
+                [
+                  set(this.spacerBottomHeight, 0),
+                  set(this.spacerTopHeight, 0),
+                ]
               )
             ])
           }
         </Animated.Code>
         <Animated.View
-          style={{
-            height: this.spacerTopHeight,
-            backgroundColor: 'red'
-          }}
-        />
-        <Animated.View
           ref={itemRef}
           // @ts-ignore
           style={{
+            position: 'relative',
             opacity: 1,
-            height: activeIndex === index ? 0 : null
           }}
         >
-          {component}
+          <Animated.View
+            style={{
+              height: this.spacerTopHeight
+            }}
+          >
+            {placeholder}
+          </Animated.View>
+          {activeIndex !== index && <Animated.View>{component}</Animated.View>}
+          <Animated.View
+            style={{
+              height: this.spacerBottomHeight
+            }}
+          >
+            {placeholder}
+          </Animated.View>
         </Animated.View>
-        <Animated.View
-          style={{
-            height: this.spacerBottomHeight,
-            backgroundColor: 'grey'
-          }}
-        />
       </>
     );
   }

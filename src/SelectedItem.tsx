@@ -81,7 +81,7 @@ class SelectedItem extends React.PureComponent<Props> {
                         add(targetItemPositionY, activeItemHeight),
                         cond(
                           lessOrEq(activeHoverIndex, activeIndex),
-                          sub(targetItemPositionY, activeItemHeight)
+                          targetItemPositionY
                         )
                       ),
                       viewOffsetTop

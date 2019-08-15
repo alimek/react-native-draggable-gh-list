@@ -1,0 +1,16 @@
+{
+  "name": "react-native-draggable-gh-list",
+  "version": "0.0.1",
+  "description": "ReactNative Draggable GH FlatList",
+  "license": "MIT",
+  "main": "src/index.js",
+  "repository": "https://github.com/alimek/react-native-draggable-gh-list.git",
+  "author": "Grzegorz Mandziak <alimek@alimek.pl>",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-gesture-handler": "*",
+    "react-native-reanimated": "*",
+    "react-native-redash": "*"
+  }
+}
