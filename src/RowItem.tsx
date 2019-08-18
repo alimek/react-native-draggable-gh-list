@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Animated from 'react-native-reanimated';
-import { LayoutChangeEvent, View } from 'react-native';
+import { View } from 'react-native';
 
 interface Props {
   component: React.ReactNode;
@@ -8,36 +8,72 @@ interface Props {
   index: number;
   itemRef: React.RefObject<any>;
   animatedActiveIndex: Animated.Value<number>;
-  activeHoverIndex: Animated.Value<number>;
-  activeItemHeight: Animated.Value<number>;
+  animatedHoverIndex: Animated.Value<number>;
+  activeHoverIndex: number;
+  activeItemHeight: number;
   placeholder?: React.ReactNode;
+  isHoverReady: boolean;
 }
 
-const {
-  block,
-  Value,
-  cond,
-  eq,
-  set,
-  lessThan,
-  greaterThan,
-} = Animated;
+const { block, Value, cond, eq, set, lessThan, greaterThan } = Animated;
 
 class RowItem extends React.Component<Props> {
   isActive = new Value(0);
   spacerTopHeight = new Value<number>(0);
   spacerBottomHeight = new Value<number>(0);
 
+  renderContent = () => {
+    const {
+      activeIndex,
+      activeHoverIndex,
+      component,
+      index,
+      activeItemHeight,
+      placeholder,
+      isHoverReady,
+    } = this.props;
+
+    if (activeIndex === -1 || !isHoverReady) {
+      return component;
+    }
+
+    if (activeIndex === index && activeHoverIndex === index) {
+      return <View style={{ height: activeItemHeight, width: '100%' }}>{placeholder}</View>;
+    }
+
+    if (activeIndex === index && activeHoverIndex !== index) {
+      return null;
+    }
+
+    return (
+      <Animated.View
+        style={{
+          paddingTop:
+            activeHoverIndex < activeIndex &&
+            activeIndex !== index &&
+            activeHoverIndex === index
+              ? activeItemHeight
+              : 0,
+          paddingBottom:
+            activeHoverIndex > activeIndex &&
+            activeIndex !== index &&
+            activeHoverIndex === index
+              ? activeItemHeight
+              : 0,
+        }}
+      >
+        {component}
+      </Animated.View>
+    );
+  };
+
   render() {
     const {
-      component,
       itemRef,
       animatedActiveIndex,
       index,
-      activeIndex,
-      activeHoverIndex,
+      animatedHoverIndex,
       activeItemHeight,
-      placeholder,
     } = this.props;
 
     return (
@@ -46,9 +82,9 @@ class RowItem extends React.Component<Props> {
           {() =>
             block([
               cond(
-                eq(activeHoverIndex, index),
+                eq(animatedHoverIndex, index),
                 set(this.isActive, 1),
-                set(this.isActive, 0)
+                set(this.isActive, 0),
               ),
               cond(
                 eq(this.isActive, 1),
@@ -58,7 +94,7 @@ class RowItem extends React.Component<Props> {
                     [
                       // is element is equal selected element
                       set(this.spacerTopHeight, activeItemHeight),
-                      set(this.spacerBottomHeight, 0)
+                      set(this.spacerBottomHeight, 0),
                     ],
                     [
                       cond(lessThan(animatedActiveIndex, index), [
@@ -68,15 +104,12 @@ class RowItem extends React.Component<Props> {
                       cond(greaterThan(animatedActiveIndex, index), [
                         set(this.spacerBottomHeight, 0),
                         set(this.spacerTopHeight, activeItemHeight),
-                      ])
-                    ]
-                  )
+                      ]),
+                    ],
+                  ),
                 ],
-                [
-                  set(this.spacerBottomHeight, 0),
-                  set(this.spacerTopHeight, 0),
-                ]
-              )
+                [set(this.spacerBottomHeight, 0), set(this.spacerTopHeight, 0)],
+              ),
             ])
           }
         </Animated.Code>
@@ -88,21 +121,21 @@ class RowItem extends React.Component<Props> {
             opacity: 1,
           }}
         >
-          <Animated.View
-            style={{
-              height: this.spacerTopHeight
-            }}
-          >
-            {placeholder}
-          </Animated.View>
-          {activeIndex !== index && <Animated.View>{component}</Animated.View>}
-          <Animated.View
-            style={{
-              height: this.spacerBottomHeight
-            }}
-          >
-            {placeholder}
-          </Animated.View>
+          {/*<Animated.View*/}
+          {/*  style={{*/}
+          {/*    height: this.spacerTopHeight,*/}
+          {/*  }}*/}
+          {/*>*/}
+          {/*  {placeholder}*/}
+          {/*</Animated.View>*/}
+          {this.renderContent()}
+          {/*<Animated.View*/}
+          {/*  style={{*/}
+          {/*    height: this.spacerBottomHeight,*/}
+          {/*  }}*/}
+          {/*>*/}
+          {/*  {placeholder}*/}
+          {/*</Animated.View>*/}
         </Animated.View>
       </>
     );

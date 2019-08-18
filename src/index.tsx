@@ -5,13 +5,7 @@ import {
   State as GHState
 } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
-import {
-  Dimensions,
-  FlatListProps,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  View
-} from 'react-native';
+import { Dimensions, FlatListProps, View } from 'react-native';
 
 import RowItem from './RowItem';
 import SelectedItem from './SelectedItem';
@@ -37,11 +31,18 @@ interface Props {
     index: number;
     startDrag: () => void;
   }) => React.ReactNode;
-  extractKey: (item: any) => string;
+  keyExtractor: (item: any, index: number) => string;
+  flatListProps?: FlatListProps<any>;
 }
 
 interface State {
+  isHoverReady: boolean;
   activeIndex: number;
+  activeItemHeight: number;
+  activeHoverIndex: number;
+  lastElementIndex: number;
+  itemRefs: React.RefObject<any>[];
+  itemTransitions: Animated.Value<number>[];
 }
 
 enum ScrollDirection {
@@ -68,17 +69,17 @@ const {
   onChange
 } = Animated;
 
-type AllProps = Props & FlatListProps<any>;
+const generateRefs = (data: any[]) => data.map(() => React.createRef());
+const generateTransition = (data: any[]) =>
+  data.map(() => new Animated.Value(0));
 
-class DraggableFlatList extends React.Component<AllProps, State> {
-  itemRefs: React.RefObject<any>[];
+class DraggableFlatList extends React.Component<Props, State> {
   containerRef: React.RefObject<View> = React.createRef();
   scrollRef: React.RefObject<FlatList<any>> = React.createRef();
 
   gestureStartPoint = new Value<number>(0);
   gestureState = new Value<number>(0);
 
-  itemTransitions: Animated.Value<number>[];
   activeItemAbsoluteY = new Value<number>(-1);
   activeItemHeight = new Value<number>(0);
   activeHoverIndex = new Value<number>(-1);
@@ -114,23 +115,33 @@ class DraggableFlatList extends React.Component<AllProps, State> {
     }
   );
 
-  constructor(props: AllProps) {
+  static getDerivedStateFromProps(props: Props, state: State): State {
+    return {
+      ...state,
+      itemRefs: generateRefs(props.data),
+      itemTransitions: generateTransition(props.data),
+      lastElementIndex: props.data.length - 1
+    };
+  }
+
+  constructor(props: Props) {
     super(props);
 
-    this.itemRefs = props.data.map(() => React.createRef());
-    this.itemTransitions = props.data.map(() => new Animated.Value<number>(0));
-
     this.state = {
-      activeIndex: -1
+      activeIndex: -1,
+      activeItemHeight: 0,
+      activeHoverIndex: -1,
+      isHoverReady: false,
+      lastElementIndex: props.data.length - 1,
+      itemRefs: generateRefs(props.data),
+      itemTransitions: generateTransition(props.data)
     };
   }
 
   handlePanResponderEnd = (values: any) => {
     const { onMoveEnd, data } = this.props;
     const [initialIndex, finalIndex] = values;
-    this.setState({
-      activeIndex: -1
-    });
+
     this.activeIndex.setValue(-1);
     this.activeHoverIndex.setValue(-1);
     this.activeItemHeight.setValue(0);
@@ -140,6 +151,12 @@ class DraggableFlatList extends React.Component<AllProps, State> {
     this.absoluteTranslationY.setValue(0);
     this.scrolledOffset.setValue(0);
     this.gestureState.setValue(0);
+    this.setState({
+      activeIndex: -1,
+      activeItemHeight: 0,
+      activeHoverIndex: -1,
+      isHoverReady: false
+    });
 
     const after = [...data];
     const element = after[initialIndex];
@@ -155,17 +172,13 @@ class DraggableFlatList extends React.Component<AllProps, State> {
       });
     }
 
-    this.itemTransitions.forEach(transition => transition.setValue(0));
+    this.state.itemTransitions.forEach(transition => transition.setValue(0));
   };
 
-  startDrag = (item: any, index: number) => {
+  setHoverComponentReady = () => {
     this.setState({
-      activeIndex: index
+      isHoverReady: true
     });
-    this.initialIndex.setValue(index);
-    this.onRowBecomeActive(index);
-    this.activeIndex.setValue(index);
-    this.activeHoverIndex.setValue(index);
   };
 
   onRowBecomeActive = (index: number) => {
@@ -182,9 +195,9 @@ class DraggableFlatList extends React.Component<AllProps, State> {
           }
         );
 
-    this.itemRefs[index] &&
-      this.itemRefs[index].current &&
-      this.itemRefs[index].current
+    this.state.itemRefs[index] &&
+      this.state.itemRefs[index].current &&
+      this.state.itemRefs[index].current
         // @ts-ignore
         .getNode()
         .measureInWindow(
@@ -192,6 +205,14 @@ class DraggableFlatList extends React.Component<AllProps, State> {
             if (y !== undefined && height !== undefined) {
               this.activeItemAbsoluteY.setValue(y);
               this.activeItemHeight.setValue(height);
+              this.initialIndex.setValue(index);
+              this.activeIndex.setValue(index);
+              this.activeHoverIndex.setValue(index);
+              this.setState({
+                activeIndex: index,
+                activeHoverIndex: index,
+                activeItemHeight: height
+              });
             }
           }
         );
@@ -199,22 +220,29 @@ class DraggableFlatList extends React.Component<AllProps, State> {
 
   renderItem = ({ item, index }: any) => {
     const { renderItem } = this.props;
-    const { activeIndex } = this.state;
+    const {
+      activeIndex,
+      activeItemHeight,
+      activeHoverIndex,
+      isHoverReady
+    } = this.state;
     const component = renderItem({
       item,
       index,
-      startDrag: () => this.startDrag(item, index)
+      startDrag: () => this.onRowBecomeActive(index)
     });
 
     return (
       <RowItem
         component={component}
+        isHoverReady={isHoverReady}
         activeIndex={activeIndex}
         animatedActiveIndex={this.activeIndex}
         index={index}
-        itemRef={this.itemRefs[index]}
-        activeHoverIndex={this.activeHoverIndex}
-        activeItemHeight={this.activeItemHeight}
+        itemRef={this.state.itemRefs[index]}
+        activeHoverIndex={activeHoverIndex}
+        animatedHoverIndex={this.activeHoverIndex}
+        activeItemHeight={activeItemHeight}
       />
     );
   };
@@ -266,7 +294,7 @@ class DraggableFlatList extends React.Component<AllProps, State> {
     }, 300);
   };
 
-  onScrollEvent = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  onScrollEvent = (event: any) => {
     this.scrollOffset.setValue(event.nativeEvent.contentOffset.y);
   };
 
@@ -297,26 +325,31 @@ class DraggableFlatList extends React.Component<AllProps, State> {
         targetItemPositionY={this.targetItemPositionY}
         activeIndex={this.activeIndex}
         activeHoverIndex={this.activeHoverIndex}
+        setHoverComponentReady={this.setHoverComponentReady}
       />
     );
   };
 
-  onChangedHoverIndex = (index: any) => {
-    this.itemRefs[index] &&
-      this.itemRefs[index].current &&
-      this.itemRefs[index].current
+  onChangedHoverIndex = (value: any) => {
+    const index = value[0];
+    this.state.itemRefs[index] &&
+      this.state.itemRefs[index].current &&
+      this.state.itemRefs[index].current
         // @ts-ignore
         .getNode()
         .measureInWindow((x?: number, y?: number) => {
           if (y !== undefined) {
             this.targetItemPositionY.setValue(y);
+            this.setState({
+              activeHoverIndex: index
+            });
           }
         });
   };
 
   render() {
-    const { data, extractKey, ...others } = this.props;
-    const { activeIndex } = this.state;
+    const { data, keyExtractor, flatListProps } = this.props;
+    const { activeIndex, activeHoverIndex } = this.state;
 
     return (
       <PanGestureHandler
@@ -410,14 +443,20 @@ class DraggableFlatList extends React.Component<AllProps, State> {
             }
           </Animated.Code>
           <FlatList
-            {...others}
+            {...flatListProps}
             data={data}
-            renderItem={({ item, index }) => this.renderItem({ item, index })}
+            renderItem={info => this.renderItem(info)}
             ref={this.scrollRef}
             scrollEnabled={activeIndex === -1}
             scrollEventThrottle={1}
             onScroll={this.onScrollEvent}
-            keyExtractor={(item, index) => `${extractKey(item)}-index-${index}`}
+            keyExtractor={(item, index) =>
+              `${keyExtractor(item, index)}-index-${index}`
+            }
+            extraData={{
+              activeHoverIndex,
+              activeIndex
+            }}
           />
           {this.renderSelectedComponent()}
         </Animated.View>
