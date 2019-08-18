@@ -33,7 +33,7 @@ const {
   add,
   sub,
   greaterThan,
-  lessOrEq,
+  lessOrEq
 } = Animated;
 
 class SelectedItem extends React.PureComponent<Props> {
@@ -54,7 +54,7 @@ class SelectedItem extends React.PureComponent<Props> {
       isAnimating,
       targetItemPositionY,
       activeIndex,
-      activeHoverIndex,
+      activeHoverIndex
     } = this.props;
 
     return (
@@ -69,9 +69,9 @@ class SelectedItem extends React.PureComponent<Props> {
                   cond(
                     and(neq(absoluteY, -1), neq(viewOffsetTop, -1)),
                     sub(absoluteY, viewOffsetTop),
-                    -wHeight,
-                  ),
-                ),
+                    -wHeight
+                  )
+                )
               ),
               cond(eq(gestureState, State.END), [
                 set(isAnimating, 1),
@@ -84,22 +84,22 @@ class SelectedItem extends React.PureComponent<Props> {
                         targetItemPositionY,
                         cond(
                           lessOrEq(activeHoverIndex, activeIndex),
-                          targetItemPositionY,
-                        ),
+                          targetItemPositionY
+                        )
                       ),
-                      viewOffsetTop,
+                      viewOffsetTop
                     ),
                     duration: 100,
-                    easing: Easing.linear,
-                  }),
-                ),
+                    easing: Easing.linear
+                  })
+                )
               ]),
-              cond(eq(isAnimating, -1), [
-                set(this.top, add(this.top, translationY)),
+              cond(and(neq(absoluteY, -1), eq(isAnimating, -1)), [
+                set(this.top, add(this.top, translationY))
               ]),
               cond(and(eq(isAnimating, 1), eq(clockRunning(this.clock), 0)), [
-                set(isAnimating, 0),
-              ]),
+                set(isAnimating, 0)
+              ])
             ])
           }
         </Animated.Code>
@@ -109,7 +109,7 @@ class SelectedItem extends React.PureComponent<Props> {
             position: 'absolute',
             top: this.top,
             left: 0,
-            right: 0,
+            right: 0
           }}
         >
           {component}
