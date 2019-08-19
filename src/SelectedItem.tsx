@@ -2,7 +2,7 @@ import * as React from 'react';
 import Animated, { Easing } from 'react-native-reanimated';
 import { runTiming } from 'react-native-redash';
 import { State } from 'react-native-gesture-handler';
-import { Dimensions } from 'react-native';
+import { Dimensions, ViewStyle } from 'react-native';
 
 const { height: wHeight } = Dimensions.get('window');
 
@@ -18,6 +18,7 @@ interface Props {
   activeIndex: Animated.Value<number>;
   activeHoverIndex: Animated.Value<number>;
   setHoverComponentReady: () => void;
+  hoverStyle?: ViewStyle;
 }
 
 const {
@@ -39,6 +40,7 @@ const {
 class SelectedItem extends React.PureComponent<Props> {
   clock = new Clock();
   top = new Value<number>(-wHeight);
+  opacity = new Value<number>(0);
 
   componentDidMount(): void {
     setTimeout(this.props.setHoverComponentReady, 200);
@@ -54,7 +56,8 @@ class SelectedItem extends React.PureComponent<Props> {
       isAnimating,
       targetItemPositionY,
       activeIndex,
-      activeHoverIndex
+      activeHoverIndex,
+      hoverStyle
     } = this.props;
 
     return (
@@ -95,6 +98,7 @@ class SelectedItem extends React.PureComponent<Props> {
                 )
               ]),
               cond(and(neq(absoluteY, -1), eq(isAnimating, -1)), [
+                set(this.opacity, 1),
                 set(this.top, add(this.top, translationY))
               ]),
               cond(and(eq(isAnimating, 1), eq(clockRunning(this.clock), 0)), [
@@ -109,7 +113,9 @@ class SelectedItem extends React.PureComponent<Props> {
             position: 'absolute',
             top: this.top,
             left: 0,
-            right: 0
+            right: 0,
+            opacity: this.opacity,
+            ...hoverStyle,
           }}
         >
           {component}

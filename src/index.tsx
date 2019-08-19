@@ -2,10 +2,10 @@ import * as React from 'react';
 import {
   FlatList,
   PanGestureHandler,
-  State as GHState
+  State as GHState,
 } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
-import { Dimensions, FlatListProps, View } from 'react-native';
+import { Dimensions, FlatListProps, View, ViewStyle } from 'react-native';
 
 import RowItem from './RowItem';
 import SelectedItem from './SelectedItem';
@@ -21,15 +21,18 @@ interface OnMoveEnd {
 
 interface Props {
   data: any[];
+  hoverStyle?: ViewStyle;
   onMoveEnd: (data: OnMoveEnd) => void;
   renderItem: ({
     item,
     index,
-    startDrag
+    startDrag,
+    isActive,
   }: {
     item: any;
     index: number;
     startDrag: () => void;
+    isActive: boolean;
   }) => React.ReactNode;
   keyExtractor: (item: any, index: number) => string;
   flatListProps?: FlatListProps<any>;
@@ -47,7 +50,7 @@ interface State {
 
 enum ScrollDirection {
   DOWN,
-  UP
+  UP,
 }
 
 const {
@@ -66,7 +69,7 @@ const {
   sub,
   greaterOrEq,
   block,
-  onChange
+  onChange,
 } = Animated;
 
 const generateRefs = (data: any[]) => data.map(() => React.createRef());
@@ -106,13 +109,13 @@ class DraggableFlatList extends React.Component<Props, State> {
         nativeEvent: {
           translationY: this.translationY,
           absoluteY: this.absoluteTranslationY,
-          state: this.gestureState
-        }
-      }
+          state: this.gestureState,
+        },
+      },
     ],
     {
-      useNativeDriver: true
-    }
+      useNativeDriver: true,
+    },
   );
 
   static getDerivedStateFromProps(props: Props, state: State): State {
@@ -120,7 +123,7 @@ class DraggableFlatList extends React.Component<Props, State> {
       ...state,
       itemRefs: generateRefs(props.data),
       itemTransitions: generateTransition(props.data),
-      lastElementIndex: props.data.length - 1
+      lastElementIndex: props.data.length - 1,
     };
   }
 
@@ -134,13 +137,21 @@ class DraggableFlatList extends React.Component<Props, State> {
       isHoverReady: false,
       lastElementIndex: props.data.length - 1,
       itemRefs: generateRefs(props.data),
-      itemTransitions: generateTransition(props.data)
+      itemTransitions: generateTransition(props.data),
     };
   }
 
   handlePanResponderEnd = (values: any) => {
     const { onMoveEnd, data } = this.props;
-    const [initialIndex, finalIndex] = values;
+    let [initialIndex, finalIndex] = values;
+
+    if (finalIndex < 0) {
+      finalIndex = 0;
+    }
+
+    if (finalIndex > data.length - 1) {
+      finalIndex = data.length - 1;
+    }
 
     this.activeIndex.setValue(-1);
     this.activeHoverIndex.setValue(-1);
@@ -155,7 +166,7 @@ class DraggableFlatList extends React.Component<Props, State> {
       activeIndex: -1,
       activeItemHeight: 0,
       activeHoverIndex: -1,
-      isHoverReady: false
+      isHoverReady: false,
     });
 
     const after = [...data];
@@ -168,7 +179,7 @@ class DraggableFlatList extends React.Component<Props, State> {
         before: data,
         from: initialIndex,
         to: finalIndex,
-        after
+        after,
       });
     }
 
@@ -177,7 +188,7 @@ class DraggableFlatList extends React.Component<Props, State> {
 
   setHoverComponentReady = () => {
     this.setState({
-      isHoverReady: true
+      isHoverReady: true,
     });
   };
 
@@ -192,7 +203,7 @@ class DraggableFlatList extends React.Component<Props, State> {
               this.viewOffsetTop.setValue(y);
               this.viewOffsetBottom.setValue(wHeight - y - height);
             }
-          }
+          },
         );
 
     this.state.itemRefs[index] &&
@@ -211,10 +222,10 @@ class DraggableFlatList extends React.Component<Props, State> {
               this.setState({
                 activeIndex: index,
                 activeHoverIndex: index,
-                activeItemHeight: height
+                activeItemHeight: height,
               });
             }
-          }
+          },
         );
   };
 
@@ -224,12 +235,13 @@ class DraggableFlatList extends React.Component<Props, State> {
       activeIndex,
       activeItemHeight,
       activeHoverIndex,
-      isHoverReady
+      isHoverReady,
     } = this.state;
     const component = renderItem({
       item,
       index,
-      startDrag: () => this.onRowBecomeActive(index)
+      startDrag: () => this.onRowBecomeActive(index),
+      isActive: false,
     });
 
     return (
@@ -270,7 +282,9 @@ class DraggableFlatList extends React.Component<Props, State> {
     if (direction === ScrollDirection.UP) {
       offset -= itemHeight;
       this.scrolledOffset.setValue(
-        offset <= 0 ? this.scrolledOffset : sub(this.scrolledOffset, itemHeight)
+        offset <= 0
+          ? this.scrolledOffset
+          : sub(this.scrolledOffset, itemHeight),
       );
     } else {
       offset += itemHeight;
@@ -285,7 +299,7 @@ class DraggableFlatList extends React.Component<Props, State> {
       // @ts-ignore
       this.scrollRef.current.scrollToOffset({
         animated: true,
-        offset: offset
+        offset: offset,
       });
 
     setTimeout(() => {
@@ -300,7 +314,7 @@ class DraggableFlatList extends React.Component<Props, State> {
 
   renderSelectedComponent = () => {
     const { activeIndex: index } = this.state;
-    const { renderItem, data } = this.props;
+    const { renderItem, data, hoverStyle } = this.props;
 
     if (index === -1) {
       return null;
@@ -310,7 +324,8 @@ class DraggableFlatList extends React.Component<Props, State> {
     const component = renderItem({
       item,
       index,
-      startDrag: () => {}
+      startDrag: () => {},
+      isActive: true,
     });
 
     return (
@@ -326,6 +341,7 @@ class DraggableFlatList extends React.Component<Props, State> {
         activeIndex={this.activeIndex}
         activeHoverIndex={this.activeHoverIndex}
         setHoverComponentReady={this.setHoverComponentReady}
+        hoverStyle={hoverStyle}
       />
     );
   };
@@ -341,7 +357,7 @@ class DraggableFlatList extends React.Component<Props, State> {
           if (y !== undefined) {
             this.targetItemPositionY.setValue(y);
             this.setState({
-              activeHoverIndex: index
+              activeHoverIndex: index,
             });
           }
         });
@@ -365,24 +381,24 @@ class DraggableFlatList extends React.Component<Props, State> {
             {() =>
               block([
                 cond(eq(this.gestureState, GHState.END), [
-                  set(this.finalIndex, this.activeHoverIndex)
+                  set(this.finalIndex, this.activeHoverIndex),
                 ]),
                 onChange(
                   this.activeHoverIndex,
-                  call([this.activeHoverIndex], this.onChangedHoverIndex)
+                  call([this.activeHoverIndex], this.onChangedHoverIndex),
                 ),
                 cond(eq(this.isAnimating, 0), [
                   call(
                     [this.initialIndex, this.finalIndex],
-                    this.handlePanResponderEnd
+                    this.handlePanResponderEnd,
                   ),
-                  set(this.isAnimating, -1)
+                  set(this.isAnimating, -1),
                 ]),
                 cond(eq(this.animatedIsScrolling, 0), [
                   cond(
                     and(
                       neq(this.activeIndex, -1),
-                      neq(this.activeItemAbsoluteY, -1)
+                      neq(this.activeItemAbsoluteY, -1),
                     ),
                     [
                       set(
@@ -393,15 +409,15 @@ class DraggableFlatList extends React.Component<Props, State> {
                               add(
                                 this.activeItemAbsoluteY,
                                 this.scrollOffset,
-                                this.translationY
+                                this.translationY,
                               ),
-                              this.viewOffsetTop
+                              this.viewOffsetTop,
                             ),
-                            this.activeItemHeight
-                          )
-                        )
-                      )
-                    ]
+                            this.activeItemHeight,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   cond(
                     and(
@@ -411,14 +427,14 @@ class DraggableFlatList extends React.Component<Props, State> {
                         this.absoluteTranslationY,
                         add(
                           this.viewOffsetTop,
-                          multiply(this.activeItemHeight, 0.5)
-                        )
-                      )
+                          multiply(this.activeItemHeight, 0.5),
+                        ),
+                      ),
                     ),
                     call(
                       [this.scrollOffset, this.activeItemHeight],
-                      this.scrollUp
-                    )
+                      this.scrollUp,
+                    ),
                   ),
                   cond(
                     and(
@@ -429,16 +445,16 @@ class DraggableFlatList extends React.Component<Props, State> {
                         sub(
                           wHeight,
                           this.viewOffsetTop,
-                          multiply(this.activeItemHeight, 0.3)
-                        )
-                      )
+                          multiply(this.activeItemHeight, 0.3),
+                        ),
+                      ),
                     ),
                     call(
                       [this.scrollOffset, this.activeItemHeight],
-                      this.scrollDown
-                    )
-                  )
-                ])
+                      this.scrollDown,
+                    ),
+                  ),
+                ]),
               ])
             }
           </Animated.Code>
@@ -455,7 +471,7 @@ class DraggableFlatList extends React.Component<Props, State> {
             }
             extraData={{
               activeHoverIndex,
-              activeIndex
+              activeIndex,
             }}
           />
           {this.renderSelectedComponent()}
