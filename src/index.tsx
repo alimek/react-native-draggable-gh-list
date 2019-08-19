@@ -364,7 +364,7 @@ class DraggableFlatList extends React.Component<Props, State> {
   };
 
   render() {
-    const { data, keyExtractor, flatListProps, ...other } = this.props;
+    const { data, keyExtractor, flatListProps } = this.props;
     const { activeIndex, activeHoverIndex } = this.state;
 
     return (
@@ -459,7 +459,7 @@ class DraggableFlatList extends React.Component<Props, State> {
             }
           </Animated.Code>
           <FlatList
-            {...other}
+            {...flatListProps}
             data={data}
             renderItem={info => this.renderItem(info)}
             ref={this.scrollRef}
